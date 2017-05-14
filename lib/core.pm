@@ -15,7 +15,7 @@ use File::Path;
 use File::Copy;
 use File::Basename;
 use Log::Log4perl;
-Log::Log4perl->init("../Conf/logger.conf");
+Log::Log4perl->init("./logger.conf");
 
 my $SCP   = `which scp`;
 my $SSH   = `which ssh`." -q -o BatchMode=yes";
@@ -36,7 +36,7 @@ sub error
 	return \@ERROR;
 }
 
-sub test
+sub validate
 {
 	my $self = shift;
 	my $log = Log::Log4perl->get_logger("");

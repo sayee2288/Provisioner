@@ -1,0 +1,6 @@
+{
+	"install-library": [{
+		"liblog-log4perl-perl": 1.49,
+		"libxyz": 1.5
+	}]
+}
