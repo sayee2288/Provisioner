@@ -112,7 +112,6 @@ sub configure
         {
         	$log->info("Chosen module: $module, no version specified, choosing automatically");
        		my $Command="$RSYNC -avz ../templates/$module $ID\@$Server:".$Arg->{$module};
-		print Dumper($Command);
 		my @Messages=`$Command 2>&1`;
 		$log->info("@Messages");
         }
@@ -146,7 +145,6 @@ sub SSHExec
 
 	my $RemoteCmd = sprintf("\"%s 2>&1\"",join(" 2>&1;", @{$Batch}));
 	my $Command = "$SSH $ServiceID\@$Server $RemoteCmd";
-	#print $Command;
 	@Messages= `$Command 2>&1`;
 	chomp @Messages;
 	$log->info("@Messages");
