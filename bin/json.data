@@ -1,6 +1,12 @@
 {
-	"install-library": [{
-		"liblog-log4perl-perl": 1.49,
-		"libxyz": 1.5
-	}]
+	"install": {
+		"liblog-log4perl-perl": "auto",
+		"apache2": "auto"
+	},
+	"remove": {
+		"abc": 1.6
+	},
+	"service": {
+		"apache": "restart"
+	}
 }
