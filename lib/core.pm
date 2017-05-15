@@ -16,7 +16,7 @@ Log::Log4perl->init("../lib/logger.conf"); 	# Module fails to detect local files
 
 our $SCP   = `which scp`;
 our $SSH   ="/usr/bin/ssh -q -o BatchMode=yes";
-our $RSYNC  = `which rsync`;
+our $RSYNC  ="/usr/bin/rsync";
 our $log = Log::Log4perl->get_logger("");
 
 sub new
@@ -31,7 +31,6 @@ sub validate
 {
 	my $self = shift;
 	my $Arg = shift;
-	#my $log = Log::Log4perl->get_logger("");
 
 	foreach my $key (keys %{$Arg})
 	{
@@ -43,57 +42,98 @@ sub validate
 			push(@{$Arg->{operations}}, "configure");
 		} elsif ($key eq "service"){
                         push(@{$Arg->{operations}}, "service");
-		} else { next; }
+		}
 	}	
-}
-
-sub sort_by_priority
-{
-	my $self = shift;
-        my $Arg = shift;
-	
         # Operations identified and validated, now sorting them by priority
         my @custom_order = qw/ remove install configure service /;
         my %order = map +($custom_order[$_] => $_), 0 .. $#custom_order;
-	@{$Arg->{operations}}=sort {$order{$a} <=> $order{$b}} @{$Arg->{operations}};
+        @{$Arg->{operations}}=sort {$order{$a} <=> $order{$b}} @{$Arg->{operations}};
 }
 
 sub install
 {
         my $self = shift;
         my $Arg = shift;
+	my $Server = shift;
+	my $ID = shift;
         my @RemoteCommands = ();
+	print $Server, $ID;
 
         # Looping through the install array to identify modules
         foreach my $module (keys %{$Arg})
         {
 		if ($Arg->{$module} eq "auto")
 		{
-                        $log->info("Chosen module: $module, no version specified, choosing automatically");
+                        $log->info("Package to be installed: $module, no version specified, choosing automatically");
                         push(@RemoteCommands, "sudo apt-get install $module -y");
 		} else {
-                	$log->info("Chosen module: $module version: $Arg->{$module}");
-                	push(@RemoteCommands, "sudo apt-get install $module=$Arg->{$module}");
+                	$log->info("Package to be installed: $module version: $Arg->{$module}");
+                	push(@RemoteCommands, "sudo apt-get install $module=$Arg->{$module} -y");
 		}
         }
 
-	$log->logdie("Failed to complete ssh execution on remote server") if SSHExec("ubuntu","ec2-34-210-183-211.us-west-2.compute.amazonaws.com",\@RemoteCommands);
+	$log->logdie("Failed to complete remote installation server") if SSHExec($ID,$Server,\@RemoteCommands);
 }
 
 
 sub remove
 {
- 	print "In remove operation \n";
+        my $self = shift;
+        my $Arg = shift;
+        my $Server = shift;
+        my $ID = shift;
+        my @RemoteCommands = ();
+
+        # Looping through the remove array to identify package
+        foreach my $package (keys %{$Arg})
+        {
+                if ($Arg->{$package} eq "auto")
+                {
+                        $log->info("Package to be removed: $package, no version specified, choosing automatically");
+                        push(@RemoteCommands, "sudo apt-get remove $package -y");
+                } else {
+                        $log->info("Package to be removed: $package version: $Arg->{$package}");
+                        push(@RemoteCommands, "sudo apt-get remove $package=$Arg->{$package} -y");
+                }
+        }
+
+        $log->logdie("Failed to complete remote uninstallation on server") if SSHExec($ID,$Server,\@RemoteCommands);
 }
 
 sub configure
 {
-	print "In configure operation \n";
+        my $self = shift;
+        my $Arg = shift;
+        my $Server = shift;
+        my $ID = shift;
+        my @RemoteCommands = ();
+
+        foreach my $module (keys %{$Arg})
+        {
+        	$log->info("Chosen module: $module, no version specified, choosing automatically");
+       		my $Command="$RSYNC -avz ../templates/$module $ID\@$Server:".$Arg->{$module};
+		print Dumper($Command);
+		my @Messages=`$Command 2>&1`;
+		$log->info("@Messages");
+        }
 }
 
 sub service
 {
+        my $self = shift;
+        my $Arg = shift;
+        my $Server = shift;
+        my $ID = shift;
+        my @RemoteCommands = ();
 
+        # Looping through the remove array to identify modules
+        foreach my $module (keys %{$Arg})
+        {
+        	$log->info("Perform $Arg->{$module} of service $module");
+       		push(@RemoteCommands, "sudo service $module $Arg->{$module}");
+        }
+
+        $log->logdie("Failed to perform specified operation on services") if SSHExec($ID,$Server,\@RemoteCommands);
 }
 
 sub SSHExec
@@ -110,14 +150,7 @@ sub SSHExec
 	@Messages= `$Command 2>&1`;
 	chomp @Messages;
 	$log->info("@Messages");
-
-	# Experimental : Exit status is valid if batch size is one (ie. one command)
-	#if( ( @{$Batch} eq 1 ) && defined $ExitStatus ){
-	#	$$ExitStatus = int($?/256);
-	#} else {
-	#	$$ExitStatus = undef;
-	#}
-	return;
+	return $?;
 }
 
 1;
