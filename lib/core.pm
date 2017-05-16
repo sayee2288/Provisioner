@@ -10,11 +10,9 @@ use Exporter;
 @EXPORT_OK = qw();
 
 use strict;
-use Data::Dumper;
 use Log::Log4perl;
 Log::Log4perl->init("../lib/logger.conf"); 	# Module fails to detect local files, hence the relative path
 
-our $SCP   = `which scp`;
 our $SSH   ="/usr/bin/ssh -q -o BatchMode=yes";
 our $RSYNC  ="/usr/bin/rsync";
 our $log = Log::Log4perl->get_logger("");
@@ -43,12 +41,30 @@ sub validate
 			push(@{$Arg->{operations}}, "configure");
 		} elsif ($key eq "service"){
                         push(@{$Arg->{operations}}, "service");
-		}
+		} 
 	}	
-        # Operations identified and validated, now sorting them by priority
-        my @custom_order = qw/ remove install configure service /;
-        my %order = map +($custom_order[$_] => $_), 0 .. $#custom_order;
-        @{$Arg->{operations}}=sort {$order{$a} <=> $order{$b}} @{$Arg->{operations}};
+}
+
+sub sort_by_priority
+{
+	my $self = shift;
+	my $Arg = shift;
+
+	# Operations identified and validated, now sorting them by priority
+	my @custom_order = qw/ remove install configure service /;
+	my %order = map +($custom_order[$_] => $_), 0 .. $#custom_order;
+	@{$Arg->{operations}}=sort {$order{$a} <=> $order{$b}} @{$Arg->{operations}};
+}
+
+sub check_server
+{
+	my $self = shift;
+	my $Server = shift;
+	my $ID = shift;
+	my @RemoteCommands = ();
+
+	push(@RemoteCommands, "sudo apt-get");
+	SSHExec($ID,$Server,\@RemoteCommands,"Server and access validation");		
 }
 
 sub install
@@ -112,7 +128,8 @@ sub configure
         	$log->info("Chosen module: $module, no version specified, choosing automatically");
        		my $Command="$RSYNC -rlptD ../templates/$module $ID\@$Server:".$Arg->{$module};
 		my @Messages=`$Command 2>&1`;
-		$log->info("@Messages");
+		$log->info("@Messages") if (@Messages);
+		$log->logdie("Failed to push configuration to remove server $Server, please check app.log") if $?;
         }
 }
 
@@ -138,7 +155,7 @@ sub SSHExec
 	my $ServiceID  = shift;
 	my $Server     = shift;
 	my $Batch      = shift; # Array  reference (list of commands)
-	my $operation  = shift; # Operation being performed
+	my $Operation  = shift; # Operation being performed
 	my @Messages=();
 	my $ExitStatus = shift; # Scalar reference (valid for single command)
 
@@ -147,7 +164,7 @@ sub SSHExec
 	@Messages= `$Command 2>&1`;
 	chomp @Messages;
 	$log->info("@Messages");
-	$log->logdie("Failed to perform $operation on $Server") if $?;
+	$log->logdie("Failed to perform $Operation on $Server") if $?;
 }
 
 1;

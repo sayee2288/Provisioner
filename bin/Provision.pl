@@ -12,7 +12,7 @@ use Data::Dumper;
 use JSON;
 
 my $log = Log::Log4perl->get_logger("");
-usage () if @ARGV<1;
+usage () if @ARGV!=1;
 $log->info("Your json file will be parsed and validated now");
 
 # This is a reference to the associative array that holds the parsed json file
@@ -24,24 +24,27 @@ json_parse();
 # Initializing the Configuration management object
 my $cm=new core($Arg);
 
-$log->info("Parsing complete, validation in progress");
+$log->info("Parsing complete, validation in progress....");
 $cm->validate($Arg);
-$log->info("No supported operations identified, please specify supported methods in json") && die if (!defined $Arg->{operations});
-$log->info("No Servers defined in the json file, aborting execution") && die if (!defined $Arg->{servers});
+$log->logdie("No Servers defined in the json file, aborting execution") if (!defined $Arg->{servers});
+$log->logdie("No supported operations identified, please use supported methods: install, remove, service or configure") if (!defined $Arg->{operations});
+$cm->sort_by_priority($Arg);
 
 foreach my $server(keys %{$Arg->{servers}})
 {
+	$log->info("Checking server and access");
+	$cm->check_server($server,$Arg->{servers}{$server});
 	$log->info("Executing selected operations on $server using ID $Arg->{servers}{$server}:");
 	foreach my $ops (@{$Arg->{operations}})
 	{
-	        $cm->$ops($Arg->{$ops},$server,$Arg->{servers}{$server}); # Passing the reference to the hash for the chosen operation
+	        $cm->$ops($Arg->{$ops},$server,$Arg->{servers}{$server});
 	}
 }
 
 sub json_parse
 {
 	local $/;
-        $log->info("Unable to locate json file, ensure that the path is correct and readable") && die unless open( my $fh, '<', $ARGV[0] );
+        $log->logdie("Unable to locate json file, ensure that the path is correct and readable") unless open( my $fh, '<', $ARGV[0] );
 	$Arg=decode_json(<$fh>);
 	close $fh;
 }
@@ -53,6 +56,8 @@ Usage:
 Provision.pl Json-File
 Options:
 	Json-File  : Absolute Path to the configuration json file.
+Note:
+	This application will only take one json file as input
 
 Author: Sayee Iere
 USAGE_END
