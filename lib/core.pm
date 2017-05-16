@@ -24,6 +24,7 @@ sub new
 	my $class = shift;
 	my $self = shift;
 	bless $self, $class;
+	$log->debug("Creating instance");
 	return $self;
 }
 
@@ -71,8 +72,7 @@ sub install
                 	push(@RemoteCommands, "sudo apt-get install $module=$Arg->{$module} -y");
 		}
         }
-
-	$log->logdie("Failed to complete remote installation server") if SSHExec($ID,$Server,\@RemoteCommands);
+	SSHExec($ID,$Server,\@RemoteCommands,"Installation");
 }
 
 
@@ -96,8 +96,7 @@ sub remove
                         push(@RemoteCommands, "sudo apt-get remove $package=$Arg->{$package} -y");
                 }
         }
-
-        $log->logdie("Failed to complete remote uninstallation on server") if SSHExec($ID,$Server,\@RemoteCommands);
+	SSHExec($ID,$Server,\@RemoteCommands,"Uninstallation");
 }
 
 sub configure
@@ -111,7 +110,7 @@ sub configure
         foreach my $module (keys %{$Arg})
         {
         	$log->info("Chosen module: $module, no version specified, choosing automatically");
-       		my $Command="$RSYNC -avz ../templates/$module $ID\@$Server:".$Arg->{$module};
+       		my $Command="$RSYNC -rlptD ../templates/$module $ID\@$Server:".$Arg->{$module};
 		my @Messages=`$Command 2>&1`;
 		$log->info("@Messages");
         }
@@ -131,8 +130,7 @@ sub service
         	$log->info("Perform $Arg->{$module} of service $module");
        		push(@RemoteCommands, "sudo service $module $Arg->{$module}");
         }
-
-        $log->logdie("Failed to perform specified operation on services") if SSHExec($ID,$Server,\@RemoteCommands);
+	SSHExec($ID,$Server,\@RemoteCommands,"specified operation on service");
 }
 
 sub SSHExec
@@ -140,6 +138,7 @@ sub SSHExec
 	my $ServiceID  = shift;
 	my $Server     = shift;
 	my $Batch      = shift; # Array  reference (list of commands)
+	my $operation  = shift; # Operation being performed
 	my @Messages=();
 	my $ExitStatus = shift; # Scalar reference (valid for single command)
 
@@ -148,7 +147,7 @@ sub SSHExec
 	@Messages= `$Command 2>&1`;
 	chomp @Messages;
 	$log->info("@Messages");
-	return $?;
+	$log->logdie("Failed to perform $operation on $Server") if $?;
 }
 
 1;
