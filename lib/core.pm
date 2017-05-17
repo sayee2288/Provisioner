@@ -126,7 +126,7 @@ sub configure
         foreach my $module (keys %{$Arg})
         {
         	$log->info("Performing Rsync of $module using $ID to $Server");
-       		my $Command="$RSYNC -rlptD ../templates/$module $ID\@$Server:".$Arg->{$module};
+       		my $Command="$RSYNC -avz --update --progress --delete-after ../templates/$module $ID\@$Server:".$Arg->{$module};
 		my @Messages=`$Command 2>&1`;
 		$log->info("@Messages") if (@Messages);
 		$log->logdie("Failed to push configuration to remove server $Server") if $?;
