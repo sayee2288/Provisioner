@@ -8,7 +8,6 @@
 use strict;
 use warnings;
 use core;
-use Data::Dumper;
 use JSON;
 
 my $log = Log::Log4perl->get_logger("");

@@ -64,7 +64,7 @@ sub check_server
 	my @RemoteCommands = ();
 
 	push(@RemoteCommands, "sudo apt-get");
-	SSHExec($ID,$Server,\@RemoteCommands,"Server and access validation");		
+	SSHExec($ID,$Server,\@RemoteCommands,"Server and access validation");	
 }
 
 sub install
@@ -125,11 +125,11 @@ sub configure
 
         foreach my $module (keys %{$Arg})
         {
-        	$log->info("Chosen module: $module, no version specified, choosing automatically");
+        	$log->info("Performing Rsync of $module using $ID to $Server");
        		my $Command="$RSYNC -rlptD ../templates/$module $ID\@$Server:".$Arg->{$module};
 		my @Messages=`$Command 2>&1`;
 		$log->info("@Messages") if (@Messages);
-		$log->logdie("Failed to push configuration to remove server $Server, please check app.log") if $?;
+		$log->logdie("Failed to push configuration to remove server $Server") if $?;
         }
 }
 
@@ -157,14 +157,12 @@ sub SSHExec
 	my $Batch      = shift; # Array  reference (list of commands)
 	my $Operation  = shift; # Operation being performed
 	my @Messages=();
-	my $ExitStatus = shift; # Scalar reference (valid for single command)
 
-	my $RemoteCmd = sprintf("\"%s 2>&1\"",join(" 2>&1;", @{$Batch}));
-	my $Command = "$SSH $ServiceID\@$Server $RemoteCmd";
+	my $RemoteCommands = sprintf("\"%s 2>&1\"",join(" 2>&1;", @{$Batch}));
+	my $Command = "$SSH $ServiceID\@$Server $RemoteCommands";
 	@Messages= `$Command 2>&1`;
 	chomp @Messages;
-	$log->info("@Messages");
-	$log->logdie("Failed to perform $Operation on $Server") if $?;
+	$log->info("@Messages") unless ($Operation=~/access/); # Capturing and printing all messages except Checking server type
+	$log->logdie("Looks like $Operation failed on $Server, check app.log") if $?;
 }
-
 1;
