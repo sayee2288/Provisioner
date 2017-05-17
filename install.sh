@@ -6,15 +6,14 @@ echo "Installing Provisioner";
 if sudo apt-get -v &>/dev/null; then
         echo "Definitely ubuntu, Proceeding with installation";
 else
-        echo "Not an ubuntu system, please run this application on an ubuntu";
+        echo "Not an ubuntu system, this tool will only work on Ubuntu distributions";
         exit 1;
 fi
 
 if sudo apt-get update &>/dev/null; then
-        echo "Updating apt cache";
+        echo "Updating apt-get repositories";
 else
-        echo "Failed to updated apt-cache";
-        exit 1;
+        echo "Failed to updated apt-get repositories, still proceeding with install ...";
 fi
 
 if perl -v &>/dev/null; then
@@ -46,5 +45,5 @@ fi
 if mkdir -p log templates; then
 	echo "Created log and templates directory";
 else
-	echo "Failed to create log and templates directory, please create them manually for application to function";
+	echo "Failed to create log and templates directory, please create them manually next to the bin directory, for this tool to function";
 fi
